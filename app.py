@@ -78,7 +78,6 @@ st.markdown(
     <div style="text-align: center;">
         <p>✨ Esta herramienta fue creada con fines educativos y de asistencia a profesionales que están comenzando en SEO.</p>
         <p>💌 Si te sirvió o tenés sugerencias, podés escribirme a <a href="mailto:florencia@crawla.com.ar">florencia@crawla.com.ar</a></p>
-        <p>📬 También podés encontrarme en <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank"><strong>LinkedIn</strong></a></p>
         <br>
         <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank">
             <button style="background-color:#4B8BBE; color:white; padding:10px 20px; font-size:16px; border:none; border-radius:6px; cursor:pointer;">
