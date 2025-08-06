@@ -50,42 +50,4 @@ if user_input:
 
         st.subheader("🔡 Términos más frecuentes")
         for palabra, freq in conteo:
-            st.markdown(f"- **{palabra}**: {freq} veces")
-
-        st.subheader("🔗 Bigrama frecuentes")
-        bigramas = encontrar_bigramas(palabras)
-        for (w1, w2), freq in bigramas:
-            st.markdown(f"- **{w1} {w2}**: {freq} veces")
-
-        if palabras_objetivo:
-            st.subheader("📌 Presencia de palabras clave objetivo")
-            objetivos = [p.strip().lower() for p in palabras_objetivo.split(",")]
-            faltantes = [p for p in objetivos if p not in palabras]
-            if faltantes:
-                st.warning("Estas palabras clave no aparecen en el contenido:")
-                for f in faltantes:
-                    st.markdown(f"- ❌ {f}")
-            else:
-                st.success("🎯 ¡Todas las palabras clave objetivo están presentes!")
-
-    except Exception as e:
-        st.error(f"No se pudo analizar el contenido: {e}")
-
-# CTA final
-st.markdown("---")
-st.markdown(
-    """
-    <div style="text-align: center;">
-        <p>✨ Esta herramienta fue creada con fines educativos y de asistencia a profesionales que están comenzando en SEO.</p>
-        <p>💌 Si te sirvió o tenés sugerencias, podés escribirme a <a href="mailto:florencia@crawla.com.ar">florencia@crawla.com.ar</a></p>
-        <p>📬 También podés encontrarme en <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank"><strong>LinkedIn</strong></a></p>
-        <br>
-        <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank">
-            <button style="background-color:#4B8BBE; color:white; padding:10px 20px; font-size:16px; border:none; border-radius:6px; cursor:pointer;">
-                🌐 Conectá conmigo en LinkedIn
-            </button>
-        </a>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+            st.markdown(f"- **{pala**
