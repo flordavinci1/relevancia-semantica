@@ -35,7 +35,10 @@ def encontrar_bigramas(lista):
 if user_input:
     try:
         if option == "URL":
-            response = requests.get(user_input, timeout=10)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36"
+            }
+            response = requests.get(user_input, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             content = soup.get_text(separator=' ', strip=True)
@@ -67,3 +70,22 @@ if user_input:
 
     except Exception as e:
         st.error(f"No se pudo analizar el contenido: {e}")
+
+# CTA final
+st.markdown("---")
+st.markdown(
+    """
+    <div style="text-align: center;">
+        <p>✨ Esta herramienta fue creada con fines educativos y de asistencia a profesionales que están comenzando en SEO.</p>
+        <p>💌 Si te sirvió o tenés sugerencias, podés escribirme a <a href="mailto:florencia@crawla.com.ar">florencia@crawla.com.ar</a></p>
+        <p>📬 También podés encontrarme en <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank"><strong>LinkedIn</strong></a></p>
+        <br>
+        <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank">
+            <button style="background-color:#4B8BBE; color:white; padding:10px 20px; font-size:16px; border:none; border-radius:6px; cursor:pointer;">
+                🌐 Conectá conmigo en LinkedIn
+            </button>
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
