@@ -3,3 +3,4 @@ requests
 beautifulsoup4
 readability-lxml
 lxml
+scikit-learn
