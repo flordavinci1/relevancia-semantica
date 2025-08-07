@@ -1,92 +1,90 @@
 import streamlit as st
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from collections import Counter
-import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
 
-# Stopwords en español (pueden ampliarse)
-STOPWORDS = set([
-    "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por", "un", "para", "con",
-    "no", "una", "su", "al", "lo", "como", "más", "pero", "sus", "le", "ya", "o", "este", "sí", "porque",
-    "esta", "entre", "cuando", "muy", "sin", "sobre", "también", "me", "hasta", "hay", "donde", "quien"
-])
+st.set_page_config(page_title="Análisis Semántico de URLs", layout="wide")
 
-st.set_page_config(page_title="Auditoría Semántica Educativa", layout="centered")
-st.title("🧠 Auditoría de Relevancia Semántica")
-st.write("Ingresá una URL o un texto y analizamos su universo semántico: términos frecuentes, bigramas y cobertura de tópicos.")
+st.title("🔍 Análisis de contenido y palabras clave")
 
-# Inputs
-option = st.radio("¿Querés analizar una URL o pegar texto?", ["URL", "Texto manual"])
-user_input = st.text_area("Ingresá la URL o el texto a analizar", height=200)
+st.markdown("""
+Esta herramienta extrae el contenido, título y metadescripción de cada página, y calcula las palabras clave más relevantes utilizando **TF-IDF**.
+""")
 
-palabras_objetivo = st.text_input("Palabras clave objetivo (separadas por coma)", placeholder="Ej: compostaje, residuos, orgánico")
+urls_input = st.text_area("📋 Pegá las URLs (una por línea)", height=200)
 
-def limpiar_texto(texto):
-    texto = texto.lower()
-    texto = re.sub(r'[^a-záéíóúüñ\s]', '', texto)
-    palabras = texto.split()
-    palabras = [p for p in palabras if p not in STOPWORDS and len(p) > 2]
-    return palabras
+if st.button("Analizar"):
+    urls = [url.strip() for url in urls_input.split("\n") if url.strip()]
+    
+    if not urls:
+        st.warning("Por favor, ingresá al menos una URL.")
+    else:
+        resultados = []
 
-def encontrar_bigramas(lista):
-    bigramas = zip(lista, lista[1:])
-    return Counter(bigramas).most_common(10)
+        for url in urls:
+            try:
+                response = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+                soup = BeautifulSoup(response.content, "html.parser")
 
-if user_input:
-    try:
-        if option == "URL":
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36"
-            }
-            response = requests.get(user_input, headers=headers, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-            content = soup.get_text(separator=' ', strip=True)
+                # Extraer title y meta description
+                title_tag = soup.find("title")
+                meta_desc_tag = soup.find("meta", attrs={"name": "description"})
+                title = title_tag.text.strip() if title_tag else ""
+                meta_description = meta_desc_tag["content"].strip() if meta_desc_tag and "content" in meta_desc_tag.attrs else ""
+
+                # Extraer texto visible
+                for script in soup(["script", "style", "noscript"]):
+                    script.decompose()
+
+                visible_text = soup.get_text(separator=' ', strip=True)
+
+                resultados.append({
+                    "url": url,
+                    "title": title,
+                    "meta_description": meta_description,
+                    "text": visible_text
+                })
+
+            except Exception as e:
+                resultados.append({
+                    "url": url,
+                    "title": "Error",
+                    "meta_description": "No disponible",
+                    "text": f"Error al acceder: {e}"
+                })
+
+        # Crear DataFrame
+        df = pd.DataFrame(resultados)
+
+        # Filtrar solo los textos válidos para análisis semántico
+        textos_validos = df[df['text'].str.startswith("Error al acceder") == False]
+
+        if not textos_validos.empty:
+            vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)
+            tfidf_matrix = vectorizer.fit_transform(textos_validos['text'])
+            feature_names = vectorizer.get_feature_names_out()
+
+            # Obtener las top N palabras clave por documento
+            top_n = 10
+            keywords_por_url = []
+
+            for i in range(tfidf_matrix.shape[0]):
+                row = tfidf_matrix[i].toarray().flatten()
+                indices_top = np.argsort(row)[::-1][:top_n]
+                keywords = [feature_names[idx] for idx in indices_top if row[idx] > 0]
+                keywords_por_url.append(", ".join(keywords))
+
+            # Añadir las palabras clave al DataFrame original
+            df.loc[textos_validos.index, 'keywords'] = keywords_por_url
         else:
-            content = user_input
+            df['keywords'] = "No disponible"
 
-        palabras = limpiar_texto(content)
-        conteo = Counter(palabras).most_common(15)
+        # Mostrar tabla
+        st.markdown("### Resultados")
+        st.dataframe(df[["url", "title", "meta_description", "keywords"]], use_container_width=True)
 
-        st.subheader("🔡 Términos más frecuentes")
-        for palabra, freq in conteo:
-            st.markdown(f"- **{palabra}**: {freq} veces")
-
-        st.subheader("🔗 Bigrama frecuentes")
-        bigramas = encontrar_bigramas(palabras)
-        for (w1, w2), freq in bigramas:
-            st.markdown(f"- **{w1} {w2}**: {freq} veces")
-
-        if palabras_objetivo:
-            st.subheader("📌 Presencia de palabras clave objetivo")
-            objetivos = [p.strip().lower() for p in palabras_objetivo.split(",")]
-            texto_completo = " ".join(palabras)
-            faltantes = [p for p in objetivos if p not in texto_completo]
-            if faltantes:
-                st.warning("Estas palabras clave no aparecen en el contenido (o aparecen con otra forma):")
-                for f in faltantes:
-                    st.markdown(f"- ❌ {f}")
-            else:
-                st.success("🎯 ¡Todas las palabras clave objetivo están presentes!")
-
-    except Exception as e:
-        st.error(f"No se pudo analizar el contenido: {e}")
-
-# CTA final
-st.markdown("---")
-st.markdown(
-    """
-    <div style="text-align: center;">
-        <p>✨ Esta herramienta fue creada con fines educativos y de asistencia a profesionales que están comenzando en SEO.</p>
-        <p>💌 Si te sirvió o tenés sugerencias, podés escribirme a <a href="mailto:florencia@crawla.com.ar">florencia@crawla.com.ar</a></p>
-        <p>📬 También podés encontrarme en <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank"><strong>LinkedIn</strong></a></p>
-        <br>
-        <a href="https://www.linkedin.com/in/florenciaestevez/" target="_blank">
-            <button style="background-color:#4B8BBE; color:white; padding:10px 20px; font-size:16px; border:none; border-radius:6px; cursor:pointer;">
-                🌐 Conectá conmigo en LinkedIn
-            </button>
-        </a>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        # Permitir descarga como CSV
+        csv = df.to_csv(index=False)
+        st.download_button("⬇️ Descargar resultados en CSV", data=csv, file_name="analisis_keywords.csv", mime="text/csv")
