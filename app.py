@@ -1,64 +1,43 @@
-import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+import streamlit as st
 import re
 
-# Función para obtener el contenido de una URL
-def obtener_contenido(url):
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        return response.text
-    except Exception as e:
-        st.error(f"Error al acceder a la URL: {e}")
-        return None
+# --- Función para extraer texto limpio de la URL ---
+def get_clean_text(url):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
 
-# Función para limpiar y extraer texto
-def extraer_texto_limpio(html):
-    soup = BeautifulSoup(html, "html.parser")
-    
-    # Eliminar scripts, styles y elementos irrelevantes
-    for tag in soup(["script", "style", "noscript", "header", "footer", "nav", "form", "aside"]):
+    # Eliminamos scripts y estilos
+    for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
 
-    text = soup.get_text(separator=" ")
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    # Extraemos el texto visible
+    return soup.get_text(separator=' ', strip=True)
 
-# Función para encontrar términos más frecuentes
-def obtener_terminos_frecuentes(texto, min_len=4):
-    palabras = re.findall(r'\b\w+\b', texto.lower())
-    frecuentes = {}
-    for palabra in palabras:
-        if len(palabra) >= min_len:
-            frecuentes[palabra] = frecuentes.get(palabra, 0) + 1
-    ordenadas = sorted(frecuentes.items(), key=lambda x: x[1], reverse=True)
-    return ordenadas[:30]
+# --- Función para análisis SEO ---
+def analyze_content(text, keyword):
+    keyword_lower = keyword.lower().strip()
+    text_lower = text.lower()
 
-# Streamlit app
-st.title("🔍 Relevancia semántica y tópicos del contenido")
+    # Coincidencia exacta de la frase clave
+    exact_match = keyword_lower in text_lower
 
-url = st.text_input("🔗 Ingresá la URL a analizar")
-keyword_objetivo = st.text_input("🎯 Palabra clave objetivo (opcional)").strip().lower()
+    # Coincidencias parciales (para frases) usando regex
+    keyword_words = keyword_lower.split()
+    pattern = r'\b' + r'\W+'.join(re.escape(word) for word in keyword_words) + r'\b'
+    regex_match = re.search(pattern, text_lower)
 
-if url:
-    html = obtener_contenido(url)
-    if html:
-        texto = extraer_texto_limpio(html)
-        st.subheader("📄 Contenido limpio (extracto)")
-        st.write(texto[:800] + "...")
+    return {
+        "exact_match": exact_match,
+        "regex_match": bool(regex_match),
+        "total_words": len(text_lower.split()),
+        "keyword_occurrences": text_lower.count(keyword_lower),
+        "regex_occurrences": len(re.findall(pattern, text_lower))
+    }
 
-        st.subheader("🔤 Términos frecuentes en el contenido")
-        top_palabras = obtener_terminos_frecuentes(texto)
-        for palabra, frecuencia in top_palabras:
-            if palabra == keyword_objetivo:
-                st.markdown(f"- ✅ **{palabra}**: {frecuencia} apariciones")
-            else:
-                st.markdown(f"- {palabra}: {frecuencia}")
-
-        if keyword_objetivo:
-            todas_palabras = dict(top_palabras)
-            if keyword_objetivo not in todas_palabras:
-                st.warning(f"La palabra clave **{keyword_objetivo}** no se encontró en los términos más frecuentes.")
+# --- Interfaz Streamlit ---
+st.title("🔍 Análisis semántico de contenido web")
+st.write(
