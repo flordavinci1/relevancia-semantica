@@ -40,4 +40,29 @@ def analyze_content(text, keyword):
 
 # --- Interfaz Streamlit ---
 st.title("🔍 Análisis semántico de contenido web")
-st.write(
+st.write("Esta herramienta analiza si una palabra o frase clave está presente en el contenido de una URL.")
+
+url = st.text_input("Introduce la URL de la página", placeholder="https://ejemplo.com")
+keyword = st.text_input("Introduce la palabra o frase clave", placeholder="seguros médicos para inmigrantes")
+
+if url and keyword:
+    try:
+        with st.spinner("Analizando contenido..."):
+            text = get_clean_text(url)
+            result = analyze_content(text, keyword)
+
+        st.success("✅ Análisis completo")
+        st.markdown(f"**Total de palabras en la página:** {result['total_words']}")
+        st.markdown(f"**Coincidencia exacta de la frase:** {'Sí ✅' if result['exact_match'] else 'No ❌'}")
+        st.markdown(f"**Coincidencias por patrón flexible:** {'Sí ✅' if result['regex_match'] else 'No ❌'}")
+        st.markdown(f"**Ocurrencias exactas:** {result['keyword_occurrences']}")
+        st.markdown(f"**Ocurrencias por patrón flexible:** {result['regex_occurrences']}")
+
+        if not result['exact_match'] and result['regex_match']:
+            st.info("⚠️ Se detectó la frase clave de forma parcial o con variaciones (por ejemplo, separada por signos o stopwords). Podés revisar si está optimizada correctamente.")
+
+        elif not result['exact_match'] and not result['regex_match']:
+            st.warning("🚫 La palabra o frase clave no se encuentra en el contenido analizado. Podría faltar o estar demasiado transformada.")
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error al analizar la URL: {e}")
